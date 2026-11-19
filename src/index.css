@@ -133,6 +133,11 @@ button {
  .category-name-button:hover {
   text-decoration: underline;
  }
+ .save-dle-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+ }
  .dle-table {
   border-collapse: separate;
   border-spacing: 60px 4px;

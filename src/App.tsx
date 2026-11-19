@@ -70,12 +70,31 @@ if (window.location.pathname === "/create") {
           <tbody>
               {Array.from({ length: rowCount }, (_, row) => (
                 <tr key={row}>
-                {Array.from({ length: columnCount }, (_, col) => (
+                {Array.from({ length: columnCount }, (_, col) => {
+                  let cellValue = ''
+
+                  if(rows[row] !== undefined && rows[row][col] !== undefined) {
+                    cellValue = rows[row][col]
+                  }
+                return (
                   <td key={col}>
-                    <input type="text" aria-label={`Character ${row}, Category ${col} value`}
+                    <input type="text" aria-label={`Character ${row+1}, Category ${col+1} value`}
+                    value={cellValue}
+                    onChange={(event) => {
+                      const value = event.currentTarget.value
+
+                      setRows(currentRows => currentRows.map((cells, rowIndex) => {
+                        if (rowIndex !== row) return cells
+
+                        const nextCells = [...cells]
+                        nextCells[col] = value
+                        return nextCells
+                      }))
+                    }}
                     />
                   </td>
-                ))}
+                )
+              })}
             </tr>
             ))}
           </tbody>
@@ -90,7 +109,18 @@ if (window.location.pathname === "/create") {
           </button>
           </div>
         )}
-
+        <div>
+        <button className="save-dle-button"
+        type="button" onClick={() => {
+          const dle = {
+            name: dleName,
+            categories: categoryNames,
+            characters: rows,
+          }
+          console.log(dle)
+        }}
+        > Save DLE</button>
+          </div>
     </main>
   )
 }
