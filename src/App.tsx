@@ -111,15 +111,31 @@ if (window.location.pathname === "/create") {
         )}
         <div>
         <button className="save-dle-button"
-        type="button" onClick={() => {
+        type="button" onClick={async () => {
           const dle = {
             name: dleName,
             categories: categoryNames,
             characters: rows,
           }
-          console.log(dle)
-        }}
-        > Save DLE</button>
+          try {
+            const response = await fetch('/dles', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(dle),
+            })
+
+            if (!response.ok) {
+              throw new Error('The backend could not receive the DLE')
+              }
+              const result = await response.json()
+              console.log(result.message)
+            } catch (error) {
+              console.error('Could not send the DLE:', error)
+            }
+          }}
+        >Save DLE</button>
           </div>
     </main>
   )
