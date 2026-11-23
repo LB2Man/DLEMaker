@@ -2,10 +2,31 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=" />
+    <link
+      rel="icon"
+      href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII="
+    />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#092499" />
-    <meta name="description" content="Turn your favorite characters into a guessing game. Create, share, and play community-made DLEs." />
+    <script>
+      (() => {
+        let theme;
+        try {
+          theme = localStorage.getItem("dlemaker-theme");
+        } catch {}
+        if (theme !== "dark" && theme !== "light")
+          theme = matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light";
+        document.documentElement.dataset.theme = theme;
+        document.querySelector('meta[name="theme-color"]').content =
+          theme === "dark" ? "#0b1222" : "#092499";
+      })();
+    </script>
+    <meta
+      name="description"
+      content="Turn your favorite characters into a guessing game. Create, share, and play community-made DLEs."
+    />
     <title>DLEMaker — Create and play character guessing games</title>
   </head>
   <body>

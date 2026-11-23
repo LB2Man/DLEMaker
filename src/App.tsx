@@ -12,6 +12,7 @@ import { api, initials, palette } from "./api";
 import type { DleSummary } from "./api";
 import Editor from "./Editor";
 import Play from "./Play";
+import ThemeToggle from "./ThemeToggle";
 
 function Header({
   user,
@@ -47,25 +48,28 @@ function Header({
           Create a DLE
         </a>
       </nav>
-      {user ? (
-        <div className="account">
-          <span className="avatar" aria-hidden="true">
-            {initials(user.displayName || "Creator")}
-          </span>
-          <span>{user.displayName || "Creator"}</span>
-          <button className="text-button" onClick={logout} disabled={busy}>
-            Log out
+      <div className="header-actions">
+        <ThemeToggle />
+        {user ? (
+          <div className="account">
+            <span className="avatar" aria-hidden="true">
+              {initials(user.displayName || "Creator")}
+            </span>
+            <span>{user.displayName || "Creator"}</span>
+            <button className="text-button" onClick={logout} disabled={busy}>
+              Log out
+            </button>
+          </div>
+        ) : (
+          <button
+            className="button small secondary"
+            onClick={login}
+            disabled={!ready || busy}
+          >
+            {!ready ? "Loading…" : busy ? "Signing in…" : "Log in with Google"}
           </button>
-        </div>
-      ) : (
-        <button
-          className="button small secondary"
-          onClick={login}
-          disabled={!ready || busy}
-        >
-          {!ready ? "Loading…" : busy ? "Signing in…" : "Log in with Google"}
-        </button>
-      )}
+        )}
+      </div>
     </header>
   );
 }
