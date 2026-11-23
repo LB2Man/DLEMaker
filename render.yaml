@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: dlemaker-api
+    runtime: node
+    region: frankfurt
+    rootDir: server
+    plan: free
+    buildCommand: npm ci --include=dev
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 22.18.0
+      - key: NODE_ENV
+        value: production
+      - key: FIREBASE_PROJECT_ID
+        value: dlemaker
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        value: https://dlemaker.web.app,https://dlemaker.firebaseapp.com

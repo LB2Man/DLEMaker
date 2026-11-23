@@ -1,75 +1,86 @@
-# React + TypeScript + Vite
+# DLEMaker
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A React and TypeScript character-guessing game builder, backed by Express and PostgreSQL.
 
-Currently, two official plugins are available:
+## Run the website
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+The project uses Node.js 22.18+ and a local PostgreSQL database named `dlemaker`.
 
-## React Compiler
+Install packages from the project folder:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```powershell
+npm.cmd install
+npm.cmd --prefix server install
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+Create `server/.env` with your own PostgreSQL connection details:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```env
+PGHOST=localhost
+PGPORT=5432
+PGDATABASE=dlemaker
+PGUSER=postgres
+PGPASSWORD=your_password
 ```
+
+The backend creates its table and adds missing metadata columns on startup. Your existing DLEs remain in the database.
+
+Build and run the complete website:
+
+```powershell
+npm.cmd run build
+npm.cmd start
+```
+
+Open http://localhost:3001.
+
+For development, run `npm.cmd run server` and `npm.cmd run dev` in separate terminals. Open Vite's printed address, usually http://localhost:5173. Vite forwards /api requests to Express.
+
+## Create, edit, and play
+
+- The frontend uses Firebase Authentication for Google sign-in. Configure Google and authorize localhost in the Firebase console.
+- Add a DLE name, optional description, category headings, and character values.
+- Choose which column identifies characters. Its position is your choice.
+- Publish saves the game in PostgreSQL and makes it appear on Explore.
+- Edit opens the same saved record. Saving changes updates that record.
+- All signed-in creators can edit all games. The backend verifies Firebase ID tokens before loading the editor data, creating DLEs, or saving changes.
+- Entirely empty character rows are omitted when publishing. Complete at least two distinct characters and two named columns.
+- New unsaved DLE drafts are kept in the current browser.
+- Play selects a random secret character on the server. Green clues match, yellow clues share a comma-separated value, and red clues differ.
+- Numeric values with matching units get higher/lower hints.
+- In-progress rounds survive page refreshes in the same tab. They expire after 24 hours or a backend restart. Saved DLEs persist in PostgreSQL.
+- Share result copies a spoiler-free clue grid and the game address.
+
+## Source
+
+- `src/App.tsx` — navigation and Explore.
+- `src/Editor.tsx` — the DLE editor and publishing.
+- `src/Play.tsx` — guessing, feedback, and result sharing.
+- `src/api.ts` — shared TypeScript types and requests.
+- `src/index.css` — responsive visual design.
+- `server/index.ts` — validation, database queries, and game routes.
+- `server/auth.ts` — Firebase ID token verification.
+
+## Checks
+
+```powershell
+npm.cmd run build
+npm.cmd run lint
+npm.cmd --prefix server run typecheck
+```
+
+## Public deployment
+
+Firebase Hosting serves the frontend at https://dlemaker.web.app. Render runs Express, and Neon hosts PostgreSQL. The deployment configuration is prepared in `firebase.json`, `.firebaserc`, and `render.yaml`.
+
+1. Create a Neon PostgreSQL database and obtain its connection URL privately.
+2. Deploy `render.yaml` from the GitHub repository as a Render Blueprint, or create a Node Web Service with root directory `server`, build command `npm ci --include=dev`, and start command `npm start`.
+3. Set Render environment variables `DATABASE_URL` to the Neon URL, `FIREBASE_PROJECT_ID` to `dlemaker`, and `NODE_VERSION` to `22.18.0`. The Firebase domains are already allowed by the backend. The service reads Render's `PORT` automatically.
+4. Verify the service's `/api/health` endpoint. New published DLEs will save to Neon. Copying existing local DLEs is a separate, optional migration.
+5. Create a private, ignored `.env.production.local` in the project root with `VITE_API_BASE_URL=https://YOUR-SERVICE.onrender.com`, using the actual Render address without a trailing `/api`.
+6. Run `firebase.cmd deploy --only hosting --project dlemaker`. The configured predeploy command builds React first.
+7. Test Google sign-in, saving, shared editing, and playing at https://dlemaker.web.app.
+
+The server reads `DATABASE_URL` when supplied and otherwise uses the existing local `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, and `PGPASSWORD` settings. Firebase verification uses the project ID and Google's public signing certificates. This verification flow needs no downloaded service-account key.
+
+Public deployment is pending the online server and database setup. The local website remains available at http://localhost:3001.
