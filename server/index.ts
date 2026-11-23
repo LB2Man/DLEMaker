@@ -4,6 +4,7 @@ import pg from "pg";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { existsSync } from "node:fs";
 import { requireUser } from "./auth.js";
 
 const app = express();
@@ -342,10 +343,17 @@ app.use("/api", (_request, response) =>
 );
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
-app.use(express.static(path.resolve(directory, "../dist")));
-app.get("/{*path}", (_request, response) =>
-  response.sendFile(path.resolve(directory, "../dist/index.html")),
-);
+const frontendDirectory = path.resolve(directory, "../dist");
+const frontendEntry = path.join(frontendDirectory, "index.html");
+if (existsSync(frontendEntry)) {
+  app.use(express.static(frontendDirectory));
+  app.get("/{*path}", (_request, response) => response.sendFile(frontendEntry));
+} else {
+  app.get("/", (_request, response) => response.json({
+    service: "DLEMaker API",
+    website: "https://dlemaker.web.app",
+  }));
+}
 app.use(
   (
     error: Error,
