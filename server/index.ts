@@ -39,6 +39,7 @@ type Dle = {
   categories: string[];
   characters: string[][];
   name_column: number;
+  creator_name?: string | null;
 };
 type Cell = {
   value: string;
@@ -172,6 +173,7 @@ function publicRound(id: string, round: Round) {
     id,
     dleId: round.dle.id,
     name: round.dle.name,
+    creator_name: round.dle.creator_name ?? null,
     categories: round.dle.categories.filter(
       (_, index) => index !== round.dle.name_column,
     ),
@@ -189,11 +191,15 @@ function publicRound(id: string, round: Round) {
 
 app.get("/api/dles", async (_request, response) => {
   const result =
-    await pool.query(`SELECT id, name, description, categories, name_column,
+    await pool.query(`SELECT id, name, description, categories, name_column, creator_name,
     (SELECT count(*)::int FROM jsonb_array_elements(characters) AS roster(row)
       WHERE EXISTS (SELECT 1 FROM jsonb_array_elements_text(roster.row) AS cell(value)
         WHERE trim(cell.value) <> '')) AS character_count,
     updated_at FROM dles ORDER BY updated_at DESC, id DESC`);
+  response.set(
+    "Cache-Control",
+    "public, max-age=30, stale-while-revalidate=60",
+  );
   response.json(result.rows);
 });
 
@@ -214,14 +220,19 @@ app.post("/api/dles", requireUser, async (request, response) => {
   const { data, error } = validateDle(request.body);
   if (!data) return response.status(400).json({ message: error });
   const result = await pool.query(
-    `INSERT INTO dles (name, description, categories, characters, name_column)
-    VALUES ($1, $2, $3, $4, $5) RETURNING id, name`,
+    `INSERT INTO dles (name, description, categories, characters, name_column, creator_uid, creator_name)
+    VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, name, creator_name`,
     [
       data.name,
       data.description,
       JSON.stringify(data.categories),
       JSON.stringify(data.characters),
       data.name_column,
+      response.locals.user.uid,
+      typeof response.locals.user.name === "string" &&
+      response.locals.user.name.trim()
+        ? response.locals.user.name.trim().slice(0, 100)
+        : "DLE creator",
     ],
   );
   response.status(201).json({ message: "DLE published", dle: result.rows[0] });
@@ -234,7 +245,7 @@ app.put("/api/dles/:id", requireUser, async (request, response) => {
   if (!data) return response.status(400).json({ message: error });
   const result = await pool.query(
     `UPDATE dles SET name = $1, description = $2, categories = $3,
-    characters = $4, name_column = $5, updated_at = NOW() WHERE id = $6 RETURNING id, name`,
+    characters = $4, name_column = $5, updated_at = NOW() WHERE id = $6 RETURNING id, name, creator_name`,
     [
       data.name,
       data.description,
@@ -349,10 +360,12 @@ if (existsSync(frontendEntry)) {
   app.use(express.static(frontendDirectory));
   app.get("/{*path}", (_request, response) => response.sendFile(frontendEntry));
 } else {
-  app.get("/", (_request, response) => response.json({
-    service: "DLEMaker API",
-    website: "https://dlemaker.web.app",
-  }));
+  app.get("/", (_request, response) =>
+    response.json({
+      service: "DLEMaker API",
+      website: "https://dlemaker.web.app",
+    }),
+  );
 }
 app.use(
   (
@@ -390,7 +403,9 @@ async function start() {
   await pool.query(`ALTER TABLE dles
     ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '',
     ADD COLUMN IF NOT EXISTS name_column INTEGER NOT NULL DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
+    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ADD COLUMN IF NOT EXISTS creator_uid TEXT,
+    ADD COLUMN IF NOT EXISTS creator_name TEXT`);
   const port = Number(process.env.PORT) || 3001;
   app.listen(port, process.env.HOST || "0.0.0.0", (error?: Error) => {
     if (error) {

@@ -12,6 +12,7 @@ export async function requireUser(
   response: Response,
   next: NextFunction,
 ) {
+  response.set("Cache-Control", "private, no-store");
   const authorization = request.get("Authorization");
   const token = authorization?.match(/^Bearer\s+(\S+)$/i)?.[1];
   if (!token) {
@@ -23,13 +24,11 @@ export async function requireUser(
 
   try {
     // Verification checks the signature, expiry, issuer, and project audience.
-    await firebaseAuth.verifyIdToken(token);
+    response.locals.user = await firebaseAuth.verifyIdToken(token);
   } catch {
-    response
-      .status(401)
-      .json({
-        message: "Your login could not be verified. Sign in again and retry.",
-      });
+    response.status(401).json({
+      message: "Your login could not be verified. Sign in again and retry.",
+    });
     return;
   }
   next();

@@ -8,7 +8,7 @@ import {
 import type { User } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
 import { auth } from "./firebase";
-import { api, initials, palette } from "./api";
+import { api, initials, palette, cachedGames, storeGames } from "./api";
 import type { DleSummary } from "./api";
 import Editor from "./Editor";
 import Play from "./Play";
@@ -74,9 +74,10 @@ function Header({
   );
 }
 
-function Home() {
-  const [dles, setDles] = useState<DleSummary[]>([]);
-  const [loading, setLoading] = useState(true);
+function Home({ user }: { user: User | null }) {
+  const [initialGames] = useState(cachedGames);
+  const [dles, setDles] = useState<DleSummary[]>(initialGames ?? []);
+  const [loading, setLoading] = useState(initialGames === null);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("recent");
@@ -84,9 +85,12 @@ function Home() {
 
   useEffect(() => {
     let active = true;
-    api<DleSummary[]>("/dles")
+    api<DleSummary[]>("/dles", { cache: "no-cache" })
       .then((data) => {
-        if (active) setDles(data);
+        if (active) {
+          setDles(data);
+          storeGames(data);
+        }
       })
       .catch((error) => {
         if (active) setError(error.message);
@@ -168,13 +172,19 @@ function Home() {
           </div>
         )}
 
+        {error && dles.length > 0 && (
+          <p className="cached-games-note" role="status">
+            Showing recently loaded games. The server is reconnecting; try again
+            shortly.
+          </p>
+        )}
         {loading ? (
           <div className="game-grid" aria-label="Loading games">
             {[0, 1, 2].map((item) => (
               <div className="skeleton-card" key={item} />
             ))}
           </div>
-        ) : error ? (
+        ) : error && !dles.length ? (
           <div className="empty-state">
             <h3>Games couldn’t be loaded</h3>
             <p>{error}</p>
@@ -232,6 +242,11 @@ function Home() {
                     <a href={`/play/${dle.id}`}>{dle.name}</a>
                   </h3>
                   {dle.description && <p>{dle.description}</p>}
+                  <p className="creator-credit">
+                    {dle.creator_name
+                      ? `By ${dle.creator_name}`
+                      : "Creator not recorded"}
+                  </p>
                   <div className="game-meta">
                     {Math.max(0, dle.categories.length - 1)} clue categories
                   </div>
@@ -239,13 +254,15 @@ function Home() {
                     <a className="button primary" href={`/play/${dle.id}`}>
                       Play DLE
                     </a>
-                    <a
-                      className="button secondary"
-                      href={`/edit/${dle.id}`}
-                      aria-label={`Edit ${dle.name}`}
-                    >
-                      Edit DLE
-                    </a>
+                    {user && (
+                      <a
+                        className="button secondary"
+                        href={`/edit/${dle.id}`}
+                        aria-label={`Edit ${dle.name}`}
+                      >
+                        Edit DLE
+                      </a>
+                    )}
                   </div>
                 </div>
               </article>
@@ -356,7 +373,7 @@ export default function App() {
         </div>
       )}
       {path === "/" ? (
-        <Home />
+        <Home user={user} />
       ) : path === "/create" || editMatch ? (
         !authReady ? (
           <main className="page-loading">
@@ -367,7 +384,11 @@ export default function App() {
           <Editor id={editMatch ? Number(editMatch[1]) : undefined} />
         ) : (
           <main className="empty-state login-state">
-            <h1>Sign in to create a DLE</h1>
+            <h1>
+              {editMatch
+                ? "Sign in to edit this DLE"
+                : "Sign in to create a DLE"}
+            </h1>
             <p>Log in to create and edit community DLEs.</p>
             <button
               className="button primary"
@@ -379,7 +400,7 @@ export default function App() {
           </main>
         )
       ) : playMatch ? (
-        <Play id={Number(playMatch[1])} />
+        <Play id={Number(playMatch[1])} canEdit={Boolean(user)} />
       ) : (
         <main className="empty-state">
           <h1>Page not found</h1>

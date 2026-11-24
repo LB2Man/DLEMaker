@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { api } from "./api";
+import { api, clearGameCache } from "./api";
 import type { Dle } from "./api";
+import { moveCategory } from "./categoryOrder";
+import type { PointerEvent } from "react";
 
 type Draft = Omit<Dle, "id">;
 const emptyDraft: Draft = {
@@ -52,6 +54,78 @@ export default function Editor({ id }: { id?: number }) {
   const [draftStored, setDraftStored] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
   const [tableOverflow, setTableOverflow] = useState(false);
+  const drag = useRef<{
+    from: number;
+    to: number;
+    x: number;
+    y: number;
+    moved: boolean;
+  } | null>(null);
+  const [dragTarget, setDragTarget] = useState<number | null>(null);
+  const [columnAnnouncement, setColumnAnnouncement] = useState("");
+
+  function reorderCategory(from: number, to: number) {
+    if (from === to || to < 0 || to >= draft.categories.length) return;
+    change(moveCategory(draft, from, to));
+    setColumnAnnouncement(
+      `${draft.categories[from] || "Category"} moved to position ${to + 1}.`,
+    );
+    requestAnimationFrame(() =>
+      tableRef.current
+        ?.querySelector<HTMLButtonElement>(
+          `[data-category-index="${to}"] .category-drag-handle`,
+        )
+        ?.focus({ preventScroll: true }),
+    );
+  }
+
+  function startColumnDrag(
+    event: PointerEvent<HTMLButtonElement>,
+    index: number,
+  ) {
+    if (event.button !== 0) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    drag.current = {
+      from: index,
+      to: index,
+      x: event.clientX,
+      y: event.clientY,
+      moved: false,
+    };
+  }
+
+  function moveColumnDrag(event: PointerEvent<HTMLButtonElement>) {
+    const active = drag.current;
+    if (!active) return;
+    if (
+      Math.hypot(event.clientX - active.x, event.clientY - active.y) < 8 &&
+      !active.moved
+    )
+      return;
+    active.moved = true;
+    const cell = document
+      .elementFromPoint(event.clientX, event.clientY)
+      ?.closest<HTMLElement>("[data-category-index]");
+    if (cell) {
+      active.to = Number(cell.dataset.categoryIndex);
+      setDragTarget(active.to);
+    }
+    const container = tableRef.current;
+    if (container) {
+      const bounds = container.getBoundingClientRect();
+      if (event.clientX > bounds.right - 35) container.scrollLeft += 18;
+      else if (event.clientX < bounds.left + 35) container.scrollLeft -= 18;
+    }
+  }
+
+  function finishColumnDrag(event: PointerEvent<HTMLButtonElement>) {
+    const active = drag.current;
+    drag.current = null;
+    setDragTarget(null);
+    if (event.currentTarget.hasPointerCapture(event.pointerId))
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    if (active?.moved) reorderCategory(active.from, active.to);
+  }
 
   useEffect(() => {
     const container = tableRef.current;
@@ -76,6 +150,7 @@ export default function Editor({ id }: { id?: number }) {
           name: data.name,
           description: data.description || "",
           name_column: data.name_column || 0,
+          creator_name: data.creator_name,
           categories: Array.from(
             { length: width },
             (_, index) => data.categories[index] || "",
@@ -199,15 +274,18 @@ export default function Editor({ id }: { id?: number }) {
           .filter((row) => row.some((cell) => cell.trim()))
           .map((row) => row.map((cell) => cell.trim())),
       };
-      const result = await api<{ dle: { id: number } }>(
-        savedId ? `/dles/${savedId}` : "/dles",
-        {
-          method: savedId ? "PUT" : "POST",
-          body: JSON.stringify(payload),
-        },
-      );
+      const result = await api<{
+        dle: { id: number; creator_name?: string | null };
+      }>(savedId ? `/dles/${savedId}` : "/dles", {
+        method: savedId ? "PUT" : "POST",
+        body: JSON.stringify(payload),
+      });
       setSavedId(result.dle.id);
-      setDraft(payload);
+      clearGameCache();
+      setDraft({
+        ...payload,
+        creator_name: result.dle.creator_name ?? draft.creator_name,
+      });
       setDirty(false);
       setSaved(true);
       if (!id) localStorage.removeItem("dlemaker-draft");
@@ -250,6 +328,13 @@ export default function Editor({ id }: { id?: number }) {
       <div className="page-heading">
         <div>
           <h1>{savedId ? "Edit DLE" : "Create a DLE"}</h1>
+          {savedId && (
+            <p className="creator-credit">
+              {draft.creator_name
+                ? `By ${draft.creator_name}`
+                : "Creator not recorded"}
+            </p>
+          )}
           <p>
             {savedId
               ? "Add characters, update your clues, and save your changes."
@@ -362,19 +447,51 @@ export default function Editor({ id }: { id?: number }) {
                   #
                 </th>
                 {draft.categories.map((category, index) => (
-                  <th key={index}>
+                  <th
+                    key={index}
+                    data-category-index={index}
+                    className={
+                      dragTarget === index ? "category-drop-target" : ""
+                    }
+                  >
                     <div className="column-heading">
-                      <span
-                        className={
-                          index === draft.name_column
-                            ? "column-tag name-tag"
-                            : "column-tag"
-                        }
+                      <button
+                        type="button"
+                        className="category-drag-handle"
+                        aria-label={`Move ${category || `category ${index + 1}`}`}
+                        title="Drag to reorder. Use left or right arrow keys when focused."
+                        onPointerDown={(event) => startColumnDrag(event, index)}
+                        onPointerMove={moveColumnDrag}
+                        onPointerUp={finishColumnDrag}
+                        onPointerCancel={() => {
+                          drag.current = null;
+                          setDragTarget(null);
+                        }}
+                        onLostPointerCapture={() => {
+                          drag.current = null;
+                          setDragTarget(null);
+                        }}
+                        onKeyDown={(event) => {
+                          if (
+                            event.key === "ArrowLeft" ||
+                            event.key === "ArrowRight"
+                          ) {
+                            event.preventDefault();
+                            reorderCategory(
+                              index,
+                              index + (event.key === "ArrowLeft" ? -1 : 1),
+                            );
+                          } else if (event.key === "Escape") {
+                            drag.current = null;
+                            setDragTarget(null);
+                          }
+                        }}
                       >
-                        {index === draft.name_column
-                          ? "CHARACTER NAME"
-                          : "CLUE CATEGORY"}
-                      </span>
+                        <span aria-hidden="true" className="drag-grip">
+                          ⠿
+                        </span>
+                        <span className="column-tag">Category</span>
+                      </button>
                       <button
                         className="icon-button remove-column"
                         title="Remove category"
@@ -385,7 +502,8 @@ export default function Editor({ id }: { id?: number }) {
                         ×
                       </button>
                     </div>
-                    <input
+                    <textarea
+                      rows={2}
                       aria-label={`Category ${index + 1} name`}
                       placeholder="Category name"
                       value={category}
@@ -411,8 +529,14 @@ export default function Editor({ id }: { id?: number }) {
                     {String(rowIndex + 1).padStart(2, "0")}
                   </td>
                   {draft.categories.map((_, column) => (
-                    <td key={column}>
-                      <input
+                    <td
+                      key={column}
+                      data-category-label={
+                        draft.categories[column] || `Category ${column + 1}`
+                      }
+                    >
+                      <textarea
+                        rows={2}
                         aria-label={`Character ${rowIndex + 1}, ${draft.categories[column] || `column ${column + 1}`}`}
                         placeholder={
                           column === draft.name_column
@@ -441,6 +565,9 @@ export default function Editor({ id }: { id?: number }) {
             </tbody>
           </table>
         </div>
+        <p className="sr-only" role="status">
+          {columnAnnouncement}
+        </p>
         {tableOverflow && (
           <p className="table-scroll-hint">
             Scroll sideways to view all columns.

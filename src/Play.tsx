@@ -2,7 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { api, initials, palette } from "./api";
 import type { Round } from "./api";
 
-export default function Play({ id }: { id: number }) {
+export default function Play({
+  id,
+  canEdit = false,
+}: {
+  id: number;
+  canEdit?: boolean;
+}) {
   const clueTableRef = useRef<HTMLDivElement>(null);
   const [cluesOverflow, setCluesOverflow] = useState(false);
   const [round, setRound] = useState<Round | null>(null);
@@ -179,9 +185,11 @@ export default function Play({ id }: { id: number }) {
           >
             How to play
           </button>
-          <a className="text-link" href={`/edit/${id}`}>
-            Edit DLE
-          </a>
+          {canEdit && (
+            <a className="text-link" href={`/edit/${id}`}>
+              Edit DLE
+            </a>
+          )}
         </div>
       </div>
       <div className="play-title">
@@ -190,6 +198,11 @@ export default function Play({ id }: { id: number }) {
           <span>?</span>
         </span>
         <h1>{round.name}</h1>
+        <p className="creator-credit">
+          {round.creator_name
+            ? `By ${round.creator_name}`
+            : "Creator not recorded"}
+        </p>
         <p>One secret character. Follow the clues to find them.</p>
         <div className="play-stats">
           <span>{round.options.length} characters</span>

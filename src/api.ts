@@ -7,6 +7,7 @@ export type Dle = {
   categories: string[];
   characters: string[][];
   name_column: number;
+  creator_name?: string | null;
 };
 
 export type DleSummary = Omit<Dle, "characters"> & {
@@ -18,6 +19,7 @@ export type Round = {
   id: string;
   dleId: number;
   name: string;
+  creator_name?: string | null;
   categories: string[];
   options: { index: number; name: string }[];
   guesses: {
@@ -35,8 +37,10 @@ export type Round = {
 
 export async function api<T>(url: string, options?: RequestInit): Promise<T> {
   const headers = new Headers(options?.headers);
-  headers.set("Content-Type", "application/json");
-  const token = await auth.currentUser?.getIdToken();
+  if (options?.body) headers.set("Content-Type", "application/json");
+  const needsLogin =
+    url === "/dles" ? options?.method === "POST" : /^\/dles\/\d+$/.test(url);
+  const token = needsLogin ? await auth.currentUser?.getIdToken() : undefined;
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
   const origin = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
@@ -50,6 +54,45 @@ export async function api<T>(url: string, options?: RequestInit): Promise<T> {
       result.message || "Something went wrong. Please try again.",
     );
   return result;
+}
+
+const gameListKey = "dlemaker-games-v1";
+export function cachedGames(): DleSummary[] | null {
+  try {
+    const saved = JSON.parse(localStorage.getItem(gameListKey) || "null");
+    if (
+      saved &&
+      Date.now() - saved.time < 24 * 60 * 60 * 1000 &&
+      Array.isArray(saved.games) &&
+      saved.games.every(
+        (game: DleSummary) =>
+          typeof game.id === "number" &&
+          typeof game.name === "string" &&
+          Array.isArray(game.categories),
+      )
+    )
+      return saved.games;
+  } catch {
+    /* A missing cache falls back to the API. */
+  }
+  return null;
+}
+export function storeGames(games: DleSummary[]) {
+  try {
+    localStorage.setItem(
+      gameListKey,
+      JSON.stringify({ time: Date.now(), games }),
+    );
+  } catch {
+    /* Browsing works without storage. */
+  }
+}
+export function clearGameCache() {
+  try {
+    localStorage.removeItem(gameListKey);
+  } catch {
+    /* Storage may be disabled. */
+  }
 }
 
 export function initials(name: string) {

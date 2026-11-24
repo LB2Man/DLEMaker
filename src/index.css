@@ -54,6 +54,7 @@ html {
 }
 button,
 input,
+textarea,
 select {
   font: inherit;
 }
@@ -79,6 +80,7 @@ a {
 }
 button,
 input,
+textarea,
 select {
   outline-offset: 3px;
 }
@@ -97,7 +99,8 @@ h3,
 p {
   line-height: 1.65;
 }
-input::placeholder {
+input::placeholder,
+textarea::placeholder {
   color: var(--placeholder);
   opacity: 1;
 }
@@ -774,8 +777,11 @@ select {
   margin: 0 5px;
   color: var(--muted);
 }
+.roster-panel {
+  overflow: visible;
+}
 .editor-table-scroll {
-  overflow: auto;
+  overflow: visible;
 }
 .table-scroll-hint {
   padding: 10px 20px;
@@ -785,13 +791,17 @@ select {
   font-size: 12px;
 }
 .editor-table {
+  table-layout: fixed;
   width: 100%;
   border-spacing: 0;
   text-align: left;
 }
 .editor-table th {
-  min-width: 190px;
-  padding: 14px 16px;
+  min-width: 0;
+  padding: 10px 8px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
   background: var(--surface-hover);
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
@@ -800,9 +810,55 @@ select {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
+  gap: 2px;
+  flex-wrap: wrap;
+}
+.category-drag-handle {
+  min-width: 0;
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 4px;
+  margin-left: -4px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--subtle-text);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.category-drag-handle:hover {
+  background: var(--blue-soft);
+}
+.category-drag-handle:active {
+  cursor: grabbing;
+}
+.drag-grip {
+  font-size: 18px;
+  line-height: 1;
+}
+.editor-table th.category-drop-target {
+  background: var(--blue-soft);
+  box-shadow:
+    inset 3px 0 0 var(--blue),
+    inset 0 0 0 1px var(--blue);
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 .column-tag {
+  min-width: 0;
+  overflow-wrap: anywhere;
   color: var(--subtle-text);
   font-size: 10px;
   font-weight: 600;
@@ -811,9 +867,12 @@ select {
 .name-tag {
   color: var(--blue);
 }
-.editor-table th input {
+.editor-table th textarea {
   width: 100%;
-  min-width: 150px;
+  min-width: 0;
+  resize: vertical;
+  font-family: inherit;
+  overflow-wrap: anywhere;
   border: none;
   background: none;
   color: var(--blue);
@@ -821,7 +880,7 @@ select {
   font-size: 15px;
   font-weight: 600;
 }
-.editor-table th input::placeholder {
+.editor-table th textarea::placeholder {
   color: var(--subtle-text);
 }
 .editor-table td {
@@ -829,9 +888,12 @@ select {
   border-bottom: 1px solid var(--border);
   padding: 7px;
 }
-.editor-table td input {
+.editor-table td textarea {
   width: 100%;
-  min-width: 160px;
+  min-width: 0;
+  resize: vertical;
+  font-family: inherit;
+  overflow-wrap: anywhere;
   color: var(--ink);
   background: var(--surface);
   padding: 12px 9px;
@@ -839,10 +901,10 @@ select {
   border-radius: 5px;
   font-size: 14px;
 }
-.editor-table td input:hover {
+.editor-table td textarea:hover {
   background: var(--surface-hover);
 }
-.editor-table td input:focus {
+.editor-table td textarea:focus {
   outline: none;
   border-color: #7796e4;
   background: var(--surface-hover);
@@ -1794,5 +1856,105 @@ select {
   *::after {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+.editor.page-width {
+  max-width: none;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+.editor-table .row-number {
+  width: 36px;
+  min-width: 0;
+  padding: 5px;
+}
+.editor-table .row-action {
+  width: 32px;
+  min-width: 0;
+}
+.editor-table textarea {
+  display: block;
+  line-height: 1.45;
+}
+.editor-table td textarea {
+  padding: 8px 4px;
+}
+.creator-credit,
+.game-info .creator-credit {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  margin-top: 7px;
+  overflow-wrap: anywhere;
+}
+.cached-games-note {
+  color: var(--muted);
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+@media (max-width: 900px) {
+  .editor.page-width {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .editor-table,
+  .editor-table thead,
+  .editor-table tbody {
+    display: block;
+  }
+  .editor-table thead tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .editor-table th {
+    display: block;
+    position: static;
+    padding: 12px;
+  }
+  .editor-table thead .row-number,
+  .editor-table thead .row-action {
+    display: none;
+  }
+  .editor-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-top: 2px solid var(--border);
+  }
+  .editor-table td {
+    display: block;
+    min-width: 0;
+    padding: 10px;
+  }
+  .editor-table td[data-category-label]::before {
+    content: attr(data-category-label);
+    display: block;
+    color: var(--blue);
+    font-size: 12px;
+    font-weight: 650;
+    margin-bottom: 5px;
+    overflow-wrap: anywhere;
+  }
+  .editor-table tbody .row-number {
+    grid-column: 1 / -1;
+    width: auto;
+    padding: 10px;
+    text-align: left;
+  }
+  .editor-table tbody .row-number::before {
+    content: "Character ";
+  }
+  .editor-table tbody .row-action {
+    width: auto;
+    text-align: right;
+    align-self: center;
+  }
+  .editor-table th textarea {
+    min-height: 48px;
+  }
+}
+@media (max-width: 420px) {
+  .editor-table tbody tr {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

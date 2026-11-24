@@ -2,6 +2,8 @@
 
 A React and TypeScript character-guessing game builder, backed by Express and PostgreSQL.
 
+Live website: https://dlemaker.web.app. The frontend runs on Firebase Hosting, the API on Render, and the online PostgreSQL database on Neon.
+
 ## Run the website
 
 The project uses Node.js 22.18+ and a local PostgreSQL database named `dlemaker`.
@@ -41,9 +43,14 @@ For development, run `npm.cmd run server` and `npm.cmd run dev` in separate term
 - The frontend uses Firebase Authentication for Google sign-in. Configure Google and authorize localhost in the Firebase console.
 - Add a DLE name, optional description, category headings, and character values.
 - Choose which column identifies characters. Its position is your choice.
+- Drag the grip beside “Category” to reorder columns. Character values and the selected character-name column move together. Keyboard users can focus the grip and press the left or right arrow key.
+- The moon/sun switch changes the theme across all pages. It remembers your choice, synchronizes open tabs, and follows your device theme until you choose one.
 - Publish saves the game in PostgreSQL and makes it appear on Explore.
 - Edit opens the same saved record. Saving changes updates that record.
 - All signed-in creators can edit all games. The backend verifies Firebase ID tokens before loading the editor data, creating DLEs, or saving changes.
+- New DLEs record their creator from the verified Google login. Editing preserves the original creator. Older DLEs with no stored author show “Creator not recorded”; the website does not guess their author.
+- Desktop editor columns fit the available width, with sticky category headings. On smaller screens, character fields stack with their category labels so no sideways scrolling is needed.
+- Explore shows a recently loaded list immediately on return visits and refreshes it in the background. Public reads avoid unnecessary login headers and requests. The first request after the free Render service sleeps can still take longer.
 - Entirely empty character rows are omitted when publishing. Complete at least two distinct characters and two named columns.
 - New unsaved DLE drafts are kept in the current browser.
 - Play selects a random secret character on the server. Green clues match, yellow clues share a comma-separated value, and red clues differ.
@@ -83,4 +90,4 @@ Firebase Hosting serves the frontend at https://dlemaker.web.app. Render runs Ex
 
 The server reads `DATABASE_URL` when supplied and otherwise uses the existing local `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, and `PGPASSWORD` settings. Firebase verification uses the project ID and Google's public signing certificates. This verification flow needs no downloaded service-account key.
 
-Public deployment is pending the online server and database setup. The local website remains available at http://localhost:3001.
+The public website is deployed at https://dlemaker.web.app and its API at https://dlemaker.onrender.com. The local website remains available at http://localhost:3001.
