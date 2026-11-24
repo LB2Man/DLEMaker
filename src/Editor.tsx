@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api, clearGameCache } from "./api";
 import type { Dle } from "./api";
 import { moveCategory } from "./categoryOrder";
 import type { PointerEvent } from "react";
+import CategoryValueInput from "./CategoryValueInput";
 
 type Draft = Omit<Dle, "id">;
 const emptyDraft: Draft = {
@@ -54,6 +55,20 @@ export default function Editor({ id }: { id?: number }) {
   const [draftStored, setDraftStored] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
   const [tableOverflow, setTableOverflow] = useState(false);
+  const categorySuggestions = useMemo(
+    () =>
+      draft.categories.map((_, column) => {
+        if (column === draft.name_column) return [];
+        const unique = new Map<string, string>();
+        for (const row of draft.characters) {
+          const value = (row[column] || "").trim();
+          const key = value.toLocaleLowerCase();
+          if (value && !unique.has(key)) unique.set(key, value);
+        }
+        return [...unique.values()].sort((a, b) => a.localeCompare(b));
+      }),
+    [draft.categories, draft.characters, draft.name_column],
+  );
   const drag = useRef<{
     from: number;
     to: number;
@@ -535,18 +550,20 @@ export default function Editor({ id }: { id?: number }) {
                         draft.categories[column] || `Category ${column + 1}`
                       }
                     >
-                      <textarea
-                        rows={2}
-                        aria-label={`Character ${rowIndex + 1}, ${draft.categories[column] || `column ${column + 1}`}`}
+                      <CategoryValueInput
+                        label={`Character ${rowIndex + 1}, ${draft.categories[column] || `column ${column + 1}`}`}
+                        category={
+                          draft.categories[column] || `Category ${column + 1}`
+                        }
                         placeholder={
                           column === draft.name_column
                             ? "Character name"
                             : "Enter a clue…"
                         }
                         value={row[column] || ""}
-                        maxLength={200}
-                        onChange={(event) =>
-                          changeCell(rowIndex, column, event.target.value)
+                        suggestions={categorySuggestions[column]}
+                        onChange={(value) =>
+                          changeCell(rowIndex, column, value)
                         }
                       />
                     </td>

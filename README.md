@@ -42,6 +42,7 @@ For development, run `npm.cmd run server` and `npm.cmd run dev` in separate term
 
 - The frontend uses Firebase Authentication for Google sign-in. Configure Google and authorize localhost in the Firebase console.
 - Add a DLE name, optional description, category headings, and character values.
+- Category fields suggest distinct values already used in that same column, filtered as you type. Choose with the mouse or arrow keys and Enter; Escape dismisses suggestions. You can always type a new value. The character-name column does not suggest existing names.
 - Choose which column identifies characters. Its position is your choice.
 - Drag the grip beside “Category” to reorder columns. Character values and the selected character-name column move together. Keyboard users can focus the grip and press the left or right arrow key.
 - The moon/sun switch changes the theme across all pages. It remembers your choice, synchronizes open tabs, and follows your device theme until you choose one.

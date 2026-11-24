@@ -910,6 +910,42 @@ select {
   background: var(--surface-hover);
   box-shadow: 0 0 0 2px #09249908;
 }
+.category-value-input {
+  position: relative;
+  min-width: 0;
+}
+.category-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 12;
+  padding: 4px;
+  border: 1px solid var(--input-border);
+  border-radius: 7px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px #0003;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.category-suggestions button {
+  display: block;
+  width: 100%;
+  padding: 9px 7px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.category-suggestions button:hover,
+.category-suggestions button[aria-selected="true"] {
+  background: var(--blue-soft);
+  color: var(--blue);
+}
 .editor-table .row-number {
   min-width: 46px;
   width: 46px;
