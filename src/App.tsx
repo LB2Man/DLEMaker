@@ -13,6 +13,7 @@ import type { DleSummary } from "./api";
 import Editor from "./Editor";
 import Play from "./Play";
 import ThemeToggle from "./ThemeToggle";
+import { DailyCard, DailyStreak } from "./Daily";
 
 function Header({
   user,
@@ -40,6 +41,12 @@ function Header({
           Explore
         </a>
         <a
+          className={location.pathname === "/daily" ? "nav-active" : ""}
+          href="/daily"
+        >
+          Daily DLE
+        </a>
+        <a
           className={
             location.pathname.startsWith("/create") ? "nav-active" : ""
           }
@@ -56,6 +63,7 @@ function Header({
               {initials(user.displayName || "Creator")}
             </span>
             <span>{user.displayName || "Creator"}</span>
+            <DailyStreak key={user.uid} />
             <button className="text-button" onClick={logout} disabled={busy}>
               Log out
             </button>
@@ -142,6 +150,7 @@ function Home({ user }: { user: User | null }) {
         </div>
       </section>
 
+      <DailyCard />
       <section className="discovery" id="discover">
         <div className="discovery-heading">
           <div className="heading-line">
@@ -374,22 +383,32 @@ export default function App() {
       )}
       {path === "/" ? (
         <Home user={user} />
-      ) : path === "/create" || editMatch ? (
+      ) : path === "/create" || editMatch || path === "/daily" ? (
         !authReady ? (
           <main className="page-loading">
             <span className="spinner" />
             Checking your login…
           </main>
         ) : user ? (
-          <Editor id={editMatch ? Number(editMatch[1]) : undefined} />
+          path === "/daily" ? (
+            <Play key={`daily-${user.uid}`} daily />
+          ) : (
+            <Editor id={editMatch ? Number(editMatch[1]) : undefined} />
+          )
         ) : (
           <main className="empty-state login-state">
             <h1>
-              {editMatch
-                ? "Sign in to edit this DLE"
-                : "Sign in to create a DLE"}
+              {path === "/daily"
+                ? "Sign in to play the daily DLE"
+                : editMatch
+                  ? "Sign in to edit this DLE"
+                  : "Sign in to create a DLE"}
             </h1>
-            <p>Log in to create and edit community DLEs.</p>
+            <p>
+              {path === "/daily"
+                ? "Solve today’s shared challenge and start your streak. Resets at midnight, Israel time."
+                : "Log in to create and edit community DLEs."}
+            </p>
             <button
               className="button primary"
               onClick={login}

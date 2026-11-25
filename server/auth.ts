@@ -18,7 +18,9 @@ export async function requireUser(
   if (!token) {
     response
       .status(401)
-      .json({ message: "Sign in with Google to save or edit a DLE." });
+      .json({
+        message: "Sign in with Google to save, edit, or play the daily DLE.",
+      });
     return;
   }
 

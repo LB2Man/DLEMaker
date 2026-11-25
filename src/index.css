@@ -1829,6 +1829,144 @@ select {
   align-items: center;
   gap: 12px;
 }
+.daily-streak {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.daily-streak .flame-icon {
+  width: 18px;
+  height: 22px;
+}
+.daily-streak:not(.streak-active) .flame-icon {
+  filter: grayscale(1);
+  opacity: 0.65;
+}
+.daily-streak:hover {
+  background: var(--blue-soft);
+}
+.daily-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 24px 28px;
+  margin: -12px 0 42px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.daily-card-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 52px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: var(--blue-soft);
+}
+.daily-card-icon .flame-icon {
+  width: 28px;
+  height: 34px;
+}
+.daily-card h2 {
+  font-size: 23px;
+  letter-spacing: -0.6px;
+}
+.daily-card p {
+  color: var(--muted);
+  font-size: 14px;
+  margin-top: 4px;
+}
+.daily-card small {
+  color: var(--muted);
+  font-size: 12px;
+  display: block;
+  margin-top: 4px;
+}
+.daily-card > .button {
+  margin-left: auto;
+}
+.daily-play-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  margin: 0 auto 28px;
+  max-width: 680px;
+}
+.daily-play-banner strong,
+.daily-play-banner span {
+  display: block;
+}
+.daily-play-banner strong {
+  font-size: 14px;
+}
+.daily-play-banner span {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+.daily-win-streak {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+.daily-win-streak span {
+  flex-basis: 100%;
+}
+@media (max-width: 800px) {
+  .site-header {
+    gap: 20px;
+  }
+  .site-header nav {
+    gap: 16px;
+  }
+  .daily-card {
+    gap: 14px;
+    padding: 22px;
+    flex-wrap: wrap;
+  }
+  .daily-card > div:nth-child(2) {
+    flex: 1;
+    min-width: 180px;
+  }
+  .daily-card > .button {
+    margin-left: 0;
+  }
+}
+@media (max-width: 580px) {
+  .daily-card {
+    margin-bottom: 32px;
+    padding: 20px;
+  }
+  .daily-card > .button {
+    width: 100%;
+  }
+  .daily-streak {
+    padding: 3px 5px;
+    gap: 2px;
+    font-size: 12px;
+  }
+  .daily-streak .flame-icon {
+    width: 16px;
+  }
+  .daily-play-banner {
+    padding: 13px;
+  }
+}
 .theme-toggle {
   display: inline-flex;
   align-items: center;

@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { api, initials, palette } from "./api";
 import type { Round } from "./api";
+import { FlameIcon } from "./Daily";
 
 export default function Play({
   id,
   canEdit = false,
+  daily = false,
 }: {
-  id: number;
+  id?: number;
   canEdit?: boolean;
+  daily?: boolean;
 }) {
   const clueTableRef = useRef<HTMLDivElement>(null);
   const [cluesOverflow, setCluesOverflow] = useState(false);
@@ -27,7 +30,10 @@ export default function Play({
     async function load() {
       try {
         let data: Round | null = null;
-        const saved = sessionStorage.getItem(`dlemaker-round-${id}`);
+        if (daily) data = await api<Round>("/daily/round");
+        const saved = daily
+          ? null
+          : sessionStorage.getItem(`dlemaker-round-${id}`);
         if (saved) {
           try {
             data = await api<Round>(`/rounds/${saved}`);
@@ -38,7 +44,7 @@ export default function Play({
         if (!data)
           data = await api<Round>(`/dles/${id}/rounds`, { method: "POST" });
         if (active) {
-          sessionStorage.setItem(`dlemaker-round-${id}`, data.id);
+          if (!daily) sessionStorage.setItem(`dlemaker-round-${id}`, data.id);
           setRound(data);
         }
       } catch (error) {
@@ -56,7 +62,43 @@ export default function Play({
     return () => {
       active = false;
     };
-  }, [id]);
+  }, [id, daily]);
+
+  const dailyResetAt = round?.daily?.resetAt;
+  useEffect(() => {
+    if (!dailyResetAt) return;
+    let active = true;
+    const reset = Date.parse(dailyResetAt);
+    async function rollover() {
+      if (Date.now() < reset || document.hidden) return;
+      setLoading(true);
+      try {
+        const data = await api<Round>("/daily/round");
+        if (active) {
+          setRound(data);
+          setQuery("");
+          setError("");
+        }
+      } catch (error) {
+        if (active)
+          setError(
+            error instanceof Error
+              ? error.message
+              : "Load today’s daily DLE to continue.",
+          );
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+    const update = () => void rollover();
+    const timer = setTimeout(update, Math.max(1000, reset - Date.now() + 250));
+    document.addEventListener("visibilitychange", update);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", update);
+    };
+  }, [dailyResetAt]);
 
   useEffect(() => {
     const container = clueTableRef.current;
@@ -77,12 +119,18 @@ export default function Play({
     setInputError("");
     setSelectedIndex(-1);
     try {
-      setRound(
-        await api<Round>(`/rounds/${round.id}/guesses`, {
+      const result = await api<Round>(
+        daily ? "/daily/guesses" : `/rounds/${round.id}/guesses`,
+        {
           method: "POST",
-          body: JSON.stringify({ index }),
-        }),
+          body: JSON.stringify({
+            index,
+            ...(daily ? { date: round.daily?.date } : {}),
+          }),
+        },
       );
+      setRound(result);
+      if (result.daily) window.dispatchEvent(new Event("daily-streak-updated"));
       setQuery("");
       setFocused(false);
     } catch (error) {
@@ -98,8 +146,10 @@ export default function Play({
     setBusy(true);
     setError("");
     try {
-      const data = await api<Round>(`/dles/${id}/rounds`, { method: "POST" });
-      sessionStorage.setItem(`dlemaker-round-${id}`, data.id);
+      const data = daily
+        ? await api<Round>("/daily/round")
+        : await api<Round>(`/dles/${id}/rounds`, { method: "POST" });
+      if (!daily) sessionStorage.setItem(`dlemaker-round-${id}`, data.id);
       setRound(data);
       setQuery("");
     } catch (error) {
@@ -129,7 +179,7 @@ export default function Play({
         )
         .join("\n");
       await navigator.clipboard.writeText(
-        `${round.name} · ${round.guesses.length} guesses\n${clues}\n${location.href}`,
+        `${daily ? `Daily DLE ${round.daily?.date} · ` : ""}${round.name} · ${round.guesses.length} guesses\n${clues}\n${location.href}`,
       );
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
@@ -156,9 +206,14 @@ export default function Play({
           <a href="/" className="button secondary">
             Back to Explore
           </a>
-          <a href={`/edit/${id}`} className="button primary">
-            Open editor
-          </a>
+          <button className="button primary" onClick={restart} disabled={busy}>
+            Try again
+          </button>
+          {canEdit && (
+            <a href={`/edit/${id}`} className="button secondary">
+              Open editor
+            </a>
+          )}
         </div>
       </main>
     );
@@ -192,6 +247,17 @@ export default function Play({
           )}
         </div>
       </div>
+      {round.daily && (
+        <div className="daily-play-banner">
+          <FlameIcon />
+          <div>
+            <strong>Daily DLE · {round.daily.date}</strong>
+            <span>
+              Same challenge for everyone. Resets at midnight, Israel time.
+            </span>
+          </div>
+        </div>
+      )}
       <div className="play-title">
         <span className={`game-emblem palette-${palette(round.name)}`}>
           {initials(round.name)}
@@ -225,8 +291,9 @@ export default function Play({
             lower. Keep guessing until you find the character.
           </p>
           <p>
-            A new round picks a fresh random character. Everyone can play at
-            their own pace.
+            {daily
+              ? "Solve today’s challenge to earn one streak day. Come back each day; missing a full day resets your streak to zero."
+              : "A new round picks a fresh random character. Everyone can play at their own pace."}
           </p>
         </section>
       )}
@@ -234,7 +301,7 @@ export default function Play({
         <div className="alert error" role="alert">
           {error}
           <button className="text-button" onClick={restart}>
-            Start a new round
+            {daily ? "Reload today’s DLE" : "Start a new round"}
           </button>
         </div>
       )}
@@ -247,14 +314,31 @@ export default function Play({
               ? "First try. You really know your world."
               : `Solved in ${round.guesses.length} guesses.`}
           </p>
+          {round.daily && (
+            <p className="daily-win-streak">
+              <FlameIcon />
+              <strong>
+                {round.daily.streak} {round.daily.streak === 1 ? "day" : "days"}{" "}
+                in a row
+              </strong>
+              <span>Daily complete. Come back tomorrow!</span>
+            </p>
+          )}
           <div className="button-row">
-            <button
-              className="button primary"
-              onClick={restart}
-              disabled={busy}
-            >
-              Play again
-            </button>
+            {!daily && (
+              <button
+                className="button primary"
+                onClick={restart}
+                disabled={busy}
+              >
+                Play again
+              </button>
+            )}
+            {daily && (
+              <a className="button primary" href="/">
+                Explore more DLEs
+              </a>
+            )}
             <button className="button secondary" onClick={share}>
               {copied ? "Copied!" : "Share result"}
             </button>
@@ -456,8 +540,12 @@ export default function Play({
         </div>
       )}
       <div className="play-bottom">
-        <span>Each round is a new mystery.</span>
-        {!round.won && (
+        <span>
+          {daily
+            ? "Your daily progress is saved to your account."
+            : "Each round is a new mystery."}
+        </span>
+        {!round.won && !daily && (
           <button
             className="text-button"
             disabled={busy}

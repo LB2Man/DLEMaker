@@ -59,6 +59,14 @@ For development, run `npm.cmd run server` and `npm.cmd run dev` in separate term
 - In-progress rounds survive page refreshes in the same tab. They expire after 24 hours or a backend restart. Saved DLEs persist in PostgreSQL.
 - Share result copies a spoiler-free clue grid and the game address.
 
+## Daily DLE and streaks
+
+- Open Daily DLE to play one shared random DLE and answer per day. A day resets at midnight in `Asia/Jerusalem` (Israel time, including daylight saving time).
+- A verified Google login is required. Solving the daily challenge earns one streak day; replaying or submitting twice cannot add extra days. Ordinary games do not count.
+- The flame beside the account name shows consecutive daily wins. Yesterday's streak remains active while today's challenge is still open; missing a full day resets it to zero. The next win starts a new streak of one.
+- PostgreSQL stores the day's frozen DLE snapshot, answer, per-account guesses, and completion. Refreshes, server restarts, and edits to the source DLE do not reset or change that day's challenge.
+- New tables `daily_challenges` and `daily_progress` are created automatically on startup. Existing DLEs are preserved. Public daily metadata never includes the answer; private progress and streaks require a verified ID token.
+
 ## Source
 
 - `src/App.tsx` — navigation and Explore.

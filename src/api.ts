@@ -33,13 +33,23 @@ export type Round = {
   }[];
   won: boolean;
   answer: string | null;
+  daily?: DailyStatus;
+};
+
+export type DailyStatus = {
+  date: string;
+  timeZone: string;
+  resetAt: string;
+  streak: number;
+  completedToday: boolean;
 };
 
 export async function api<T>(url: string, options?: RequestInit): Promise<T> {
   const headers = new Headers(options?.headers);
   if (options?.body) headers.set("Content-Type", "application/json");
   const needsLogin =
-    url === "/dles" ? options?.method === "POST" : /^\/dles\/\d+$/.test(url);
+    url.startsWith("/daily/") ||
+    (url === "/dles" ? options?.method === "POST" : /^\/dles\/\d+$/.test(url));
   const token = needsLogin ? await auth.currentUser?.getIdToken() : undefined;
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
